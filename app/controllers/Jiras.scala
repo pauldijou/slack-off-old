@@ -34,18 +34,22 @@ object Jiras extends Controller {
         var message = ""
         var attachmentsBuffer = scala.collection.mutable.ListBuffer[IncomingWebHookAttachment]()
 
-        val attachmentIssueSummary = IncomingWebHookAttachmentField("Summary", fields.description)
-        val attachmentIssueCreator = IncomingWebHookAttachmentField("Creator", fields.creator.displayName)
+        val attachmentIssueSummary = IncomingWebHookAttachmentField("Summary", fields.summary)
         val defaultColor = if (event.created) { Some("good") } else if (event.deleted) { Some("danger") } else None
         val defaultAttachment = IncomingWebHookAttachment(
-          s"Created by ${fields.creator.displayName}. Summary: ${fields.description}",
+          s"Created by ${fields.creator.displayName}. Summary: ${fields.summary}",
           None, None, defaultColor,
-          List(attachmentIssueSummary, attachmentIssueCreator)
+          List(attachmentIssueSummary)
         )
 
         if (event.created) {
           message = s"${issueType} <${issueLink}|${issueName}> has been created by ${updatedBy}."
-          attachmentsBuffer += defaultAttachment
+          val improvedFields =
+            IncomingWebHookAttachmentField("Priority", fields.priority.name) +:
+            defaultAttachment.fields :+
+            IncomingWebHookAttachmentField("Description", fields.description)
+
+          attachmentsBuffer += defaultAttachment.copy(fields = improvedFields)
         } else if (event.deleted) {
           message = s"${issueType} <${issueLink}|${issueName}> has been deleted by ${updatedBy}."
           attachmentsBuffer += defaultAttachment
@@ -54,7 +58,7 @@ object Jiras extends Controller {
           attachmentsBuffer += defaultAttachment
         } else if (event.changedlog) {
           val changelog = event.changelog.get
-          message = s"${issueType} <${issueLink}|${issueName}> has been updated by ${updatedBy} (${fields.description})."
+          message = s"${issueType} <${issueLink}|${issueName}> has been updated by ${updatedBy} (${fields.summary})."
 
           changelog.items.foreach { item =>
             val from = item.fromStr.getOrElse("")
@@ -83,9 +87,9 @@ object Jiras extends Controller {
             }
           } else {
             if (event.newlyCommented) {
-              message = s"${updatedBy} added a comment to ${issueType} <${issueLink}|${issueName}> (${fields.description})."
+              message = s"${updatedBy} added a comment to ${issueType} <${issueLink}|${issueName}> (${fields.summary})."
             } else {
-              message = s"${updatedBy} edited a comment to ${issueType} <${issueLink}|${issueName}> (${fields.description})."
+              message = s"${updatedBy} edited a comment to ${issueType} <${issueLink}|${issueName}> (${fields.summary})."
             }
           }
 
