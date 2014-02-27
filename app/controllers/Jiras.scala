@@ -10,7 +10,7 @@ import models.JiraWebhookAction._
 
 import services._
 
-object Jiras extends Controller {
+object Jiras extends Controller with utils.Config {
   
   def handleWebhook = Action(parse.json) { implicit request =>
     println(Json.prettyPrint(request.body))
@@ -27,7 +27,7 @@ object Jiras extends Controller {
         val fields = issue.fields
 
         val issueName = event.issue.key
-        val issueLink = "https://zenstudio.atlassian.net/browse/" + issueName
+        val issueLink = JiraApi.issueUrl(issueName)
         val issueType =fields.issuetype.name
         val updatedBy = event.user.displayName
 
@@ -47,7 +47,7 @@ object Jiras extends Controller {
           val improvedFields =
             IncomingWebHookAttachmentField("Priority", fields.priority.name) +:
             defaultAttachment.fields :+
-            IncomingWebHookAttachmentField("Description", fields.description)
+            IncomingWebHookAttachmentField("Description", fields.description.getOrElse(""))
 
           attachmentsBuffer += defaultAttachment.copy(fields = improvedFields)
         } else if (event.deleted) {

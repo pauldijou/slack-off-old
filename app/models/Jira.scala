@@ -57,7 +57,7 @@ case class JiraIssueFields(
   reporter: Option[JiraUser],
   updated: String,
   created: String,
-  description: String,
+  description: Option[String],
   priority: JiraPriority,
   status: JiraStatus,
   labels: List[String],

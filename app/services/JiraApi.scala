@@ -7,14 +7,21 @@ import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import play.api.libs.ws.WS
 
+import models.JiraIssue
+
 object JiraApi extends utils.Config {
   lazy val apiUrl = jiraUrl + "/rest/api/2"
   lazy val apiUrlIssues = apiUrl + "/issue"
 
-  lazy val api = WS.url(jiraUrl + "/rest/api/2").withHeaders("Authorization" -> ("Basic " + jiraAuthBasic))
-  lazy val apiIssues = WS.url(apiUrlIssues).withHeaders("Authorization" -> ("Basic " + jiraAuthBasic))
+  lazy val api = WS.url(jiraUrl + "/rest/api/2")//.withHeaders("Authorization" -> ("Basic " + jiraAuthBasic))
+  lazy val apiIssues = WS.url(apiUrlIssues)//.withHeaders("Authorization" -> ("Basic " + jiraAuthBasic))
 
-  def issueUrl(key: String) = apiUrlIssues + "/" + key
+  def issueUrl(key: String) = jiraUrl + "/browse/" + key
+
+  def get(key: String): Future[JiraIssue] =
+    WS.url(apiUrlIssues + "/" + key)
+      .withHeaders("Authorization" -> ("Basic " + jiraAuthBasic))
+      .get.map(_.json.as[JiraIssue])
 
   def create(summary: String, description: String, project: String, issueType: String): Future[JsObject] = {
     val projectLabel = if (utils.Numbers.isAllDigits(project)) { "id" } else { "key" }

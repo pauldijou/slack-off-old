@@ -15,19 +15,6 @@ import models.JiraWebhookAction._
 
 import services._
 
-case class Command(
-  token: String,
-  team_id: String,
-  channel_id: String,
-  channel_name: String,
-  user_id: String,
-  user_name: String,
-  command: String,
-  text: String
-) {
-  lazy val args: List[String] = text.split(" ").toList
-}
-
 object Commands extends Controller {
   val token = "FGbEeBew4N8NiCwcBcK9Qp3e"
 
@@ -44,10 +31,10 @@ object Commands extends Controller {
       "user_name" -> nonEmptyText,
       "command" -> nonEmptyText,
       "text" -> nonEmptyText
-    )(Command.apply)(Command.unapply)
+    )(SlackCommand.apply)(SlackCommand.unapply)
   )
 
-  def redirectToCommand(command: Command): Future[SimpleResult] = command.command match {
+  def redirectToCommand(command: SlackCommand): Future[SimpleResult] = command.command match {
     case "/do" => {
       command.args.headOption match {
         case None => asyncError("/do command must have at least one argument.")
@@ -71,7 +58,7 @@ object Commands extends Controller {
     )
   }
 
-  def handleJira(command: Command): Future[SimpleResult] = {
+  def handleJira(command: SlackCommand): Future[SimpleResult] = {
     command.args.headOption match {
       case Some("") => asyncError("/jira command must have at least one argument.")
       case Some("new") => {
@@ -87,7 +74,8 @@ object Commands extends Controller {
         }
       }
       case Some(key) => {
-        Future(Ok("Display link to JIRA " + key + "\n Retour à la ligne"))
+        val link = JiraApi.issueUrl(key)
+        Future(Ok(s"<${link}|${key}>"))
       }
       case _ => asyncError("/jira command must have at least one argument.")
     }
