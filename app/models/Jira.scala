@@ -41,6 +41,14 @@ object JiraComments { implicit val jiraCommentsFormat = Json.format[JiraComments
 case class JiraIssueType(self: String, id: String, description: String, iconUrl: String, name: String, subtask: Boolean)
 object JiraIssueType { implicit val jiraIssueTypeFormat = Json.format[JiraIssueType] }
 
+// STATUS CATEGORY
+case class JiraStatusCategory(self: String, id: Long, key: String, colorName: String, name: String)
+object JiraStatusCategory { implicit val jiraStatusCategoryFormat = Json.format[JiraStatusCategory] }
+
+// STATUS CATEGORY
+case class JiraStatus(self: String, id: String, name: String, description: String, iconUrl: String, statusCategory: JiraStatusCategory)
+object JiraStatus { implicit val jiraStatusFormat = Json.format[JiraStatus] }
+
 // FIELDS
 case class JiraIssueFields(
   summary: String,
@@ -51,6 +59,8 @@ case class JiraIssueFields(
   created: String,
   description: String,
   priority: JiraPriority,
+  status: JiraStatus,
+  labels: List[String],
   project: JiraProject,
   comment: JiraComments,
   creator: JiraUser,
@@ -71,6 +81,25 @@ object JiraIssue {
   implicit val jiraIssueFormat = Json.format[JiraIssue]
 }
 
+// CHANGELOG ITEM
+case class JiraChangelogItem(toStr: Option[String], to: Option[String], fromStr: Option[String], from: Option[String], fieldtype: String, field: String)
+object JiraChangelogItem {
+  implicit val jiraChangelogItemRead = (
+    (__ \ "toString").read[Option[String]] and
+    (__ \ "to").read[Option[String]] and
+    (__ \ "fromString").read[Option[String]] and
+    (__ \ "from").read[Option[String]] and
+    (__ \ "fieldtype").read[String] and
+    (__ \ "field").read[String]
+  )(apply _)
+
+  implicit val jiraChangelogItemWrite = Json.writes[JiraChangelogItem]
+}
+
+// CHANGELOG
+case class JiraChangelog(id: String, items: List[JiraChangelogItem])
+object JiraChangelog { implicit val jiraChangelogFormat = Json.format[JiraChangelog] }
+
 // WEBHOOK ACTION
 object JiraWebhookAction extends Enumeration {
   type JiraWebhookAction = Value
@@ -89,13 +118,13 @@ object JiraWebhookAction extends Enumeration {
   }
 }
 
-
 // WEBHOOK EVENT
 case class JiraWebhookEvent (
   webhookEvent: JiraWebhookAction.Value,
   user: JiraUser,
   issue: JiraIssue,
   comment: Option[JiraComment],
+  changelog: Option[JiraChangelog],
   timestamp: Long
 ) {
   lazy val created = (this.webhookEvent == JiraWebhookAction.ISSUE_CREATED)
@@ -103,9 +132,10 @@ case class JiraWebhookEvent (
   lazy val deleted = (this.webhookEvent == JiraWebhookAction.ISSUE_DELETED)
   lazy val worklogUpdated = (this.webhookEvent == JiraWebhookAction.WORKLOG_UPDATED)
 
-  lazy val isComment = updated && (this.comment.map(c => true) getOrElse false)
-  lazy val isNewComment = updated && (this.comment.map(c => c.created == c.updated) getOrElse false)
-  lazy val isUpdatedComment = updated && (this.comment.map(c => c.created != c.updated) getOrElse false)
+  lazy val commented = updated && this.comment.isDefined
+  lazy val newlyCommented = updated && (this.comment.map(c => c.created == c.updated) getOrElse false)
+
+  lazy val changedlog = updated && this.changelog.isDefined
 }
 
 object JiraWebhookEvent {

@@ -13,6 +13,8 @@ import services._
 object Jiras extends Controller {
   
   def handleWebhook = Action(parse.json) { implicit request =>
+    println(Json.prettyPrint(request.body))
+
     request.body.validate[JiraWebhookEvent].fold(
       errors => println(errors),
       event => {
@@ -28,36 +30,75 @@ object Jiras extends Controller {
         val issueLink = "https://zenstudio.atlassian.net/browse/" + issueName
         val issueType =fields.issuetype.name
         val updatedBy = event.user.displayName
-        println(issueName + " | " + issueLink)
 
-        val message = action match {
-          case ISSUE_CREATED => s"${issueType} <${issueLink}|${issueName}> has been created by ${updatedBy}."
-          case ISSUE_UPDATED => s"${issueType} <${issueLink}|${issueName}> has been updated by ${updatedBy}."
-          case ISSUE_DELETED => s"${issueType} <${issueLink}|${issueName}> has been deleted by ${updatedBy}."
-          case WORKLOG_UPDATED => s"Worklog of <${issueLink}|${issueName}> has been updated by ${updatedBy}."
-        }
+        var message = ""
+        var attachmentsBuffer = scala.collection.mutable.ListBuffer[IncomingWebHookAttachment]()
 
         val attachmentIssueSummary = IncomingWebHookAttachmentField("Summary", fields.description)
         val attachmentIssueCreator = IncomingWebHookAttachmentField("Creator", fields.creator.displayName)
-
-        val webhook = IncomingWebHook(
-          message,
-          username,
-          channel,
-          iconUrl,
-          None,
-          Some(List(
-            IncomingWebHookAttachment(
-              "Fallback",
-              None,
-              None,
-              None,
-              List(attachmentIssueSummary, attachmentIssueCreator)
-            )
-          ))
+        val defaultColor = if (event.created) { Some("good") } else if (event.deleted) { Some("danger") } else None
+        val defaultAttachment = IncomingWebHookAttachment(
+          s"Created by ${fields.creator.displayName}. Summary: ${fields.description}",
+          None, None, defaultColor,
+          List(attachmentIssueSummary, attachmentIssueCreator)
         )
 
-        IncomingWebhooks.send(webhook)
+        if (event.created) {
+          message = s"${issueType} <${issueLink}|${issueName}> has been created by ${updatedBy}."
+          attachmentsBuffer += defaultAttachment
+        } else if (event.deleted) {
+          message = s"${issueType} <${issueLink}|${issueName}> has been deleted by ${updatedBy}."
+          attachmentsBuffer += defaultAttachment
+        } else if (event.worklogUpdated) {
+          message = s"Worklog of <${issueLink}|${issueName}> has been updated by ${updatedBy}."
+          attachmentsBuffer += defaultAttachment
+        } else if (event.changedlog) {
+          val changelog = event.changelog.get
+          message = s"${issueType} <${issueLink}|${issueName}> has been updated by ${updatedBy} (${fields.description})."
+
+          changelog.items.foreach { item =>
+            val from = item.fromStr.getOrElse("")
+            val to = item.toStr.getOrElse("")
+
+            attachmentsBuffer += IncomingWebHookAttachment(
+              s"${item.field}: ${from} -> ${to}", None, None, None,
+              List(
+                IncomingWebHookAttachmentField("Field", item.field),
+                IncomingWebHookAttachmentField("From", from, true),
+                IncomingWebHookAttachmentField("To", to, true)
+              )
+            )
+          }
+        }
+
+        if (event.commented) {
+          val comment = event.comment.get
+          var fieldName = "Content"
+
+          if (message.length > 1) {
+            if (event.newlyCommented) {
+              fieldName = s"Also added a comment:"
+            } else {
+              fieldName = s"Also edited a comment:"
+            }
+          } else {
+            if (event.newlyCommented) {
+              message = s"${updatedBy} added a comment to ${issueType} <${issueLink}|${issueName}> (${fields.description})."
+            } else {
+              message = s"${updatedBy} edited a comment to ${issueType} <${issueLink}|${issueName}> (${fields.description})."
+            }
+          }
+
+          attachmentsBuffer += IncomingWebHookAttachment(
+            s"${fieldName}: ${comment.body}", None, None, Some("warning"),
+            List(IncomingWebHookAttachmentField(fieldName, comment.body))
+          )
+        } 
+
+        val attachments = attachmentsBuffer.result
+        val attachmentsOpt = if (attachments.isEmpty) { None } else { Some(attachments) }
+
+        IncomingWebhooks.send(IncomingWebHook(message, username, channel, iconUrl, None, attachmentsOpt))
       }
     )
 
