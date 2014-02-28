@@ -46,13 +46,18 @@ object IncomingWebHook {
 case class OutgoingWebHook(
   token: String,
   team_id: String,
+  team_domain: String,
   channel_id: String,
   channel_name: String,
   timestamp: String,
   user_id: String,
   user_name: String,
-  text: String
-)
+  text: Option[String],
+  service_id: Option[String]
+) {
+  lazy val content = this.text.getOrElse("")
+  lazy val acceptable = (this.user_id != "USLACKBOT") && this.text.isDefined
+}
 
 // SlackCommand -----------------
 

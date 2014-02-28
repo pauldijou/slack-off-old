@@ -27,12 +27,14 @@ object OutgoingWebHooks extends Controller {
     mapping(
       "token" -> nonEmptyText,
       "team_id" -> nonEmptyText,
+      "team_domain" -> nonEmptyText,
       "channel_id" -> nonEmptyText,
       "channel_name" -> nonEmptyText,
       "timestamp" -> nonEmptyText,
       "user_id" -> nonEmptyText,
       "user_name" -> nonEmptyText,
-      "text" -> nonEmptyText
+      "text" -> optional(text),
+      "service_id" -> optional(text)
     )(OutgoingWebHook.apply)(OutgoingWebHook.unapply)
   )
 
@@ -55,14 +57,19 @@ object OutgoingWebHooks extends Controller {
       else { response = response + "\n" + message }
     }
 
+    Logger("hooks.outgoing").debug("--------------- Handling OutgoingWebHook ---------------");
     hookForm.bindFromRequest.fold(
-      errors => Future(IncomingWebHook("Something went really wrong", Some("ERROR")).toResult),
+      errors => {
+        Logger("hooks.outgoing").debug("ERROR parsing: " + request.body)
+        Future(IncomingWebHook("Something went really wrong", Some("ERROR")).toResult)
+      },
       hook => {
-        if (hook.user_id == "USLACKBOT") { Future(Ok) }
+        Logger("hooks.outgoing").debug(hook.toString)
+        if (!hook.acceptable) { Future(Ok) }
         else {
           // Handle JIRA expressions
           Future.sequence((for {
-            jiraRegex(issueKey) <- jiraRegex findAllIn hook.text
+            jiraRegex(issueKey) <- jiraRegex findAllIn hook.content
           } yield issueKey).toList map {
             key => JiraApi.get(key).map { (key, _) }
           }).map { issues =>

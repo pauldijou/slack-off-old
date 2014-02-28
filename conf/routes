@@ -5,8 +5,9 @@
 # Home page
 POST    /jira                       controllers.Jiras.handleWebhook
 POST    /command                    controllers.Commands.handle
-GET     /slack/hook                 controllers.OutgoingWebHooks.get
-POST    /slack/hook                 controllers.OutgoingWebHooks.handle
+
+#POST    /hooks/jira                 controllers.Jiras.handleWebhook
+POST    /hooks/outgoing             controllers.OutgoingWebHooks.handle
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)
