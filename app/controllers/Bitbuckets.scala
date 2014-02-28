@@ -9,9 +9,10 @@ import models._
 import services._
 
 object Bitbuckets extends Controller with utils.Config with utils.Log {
-  lazy val logger = Logger("logger.hooks.bitbucket")
+  lazy val logger = Logger("hooks.bitbucket")
 
   def handlePostHook = Action(parse.json) { implicit request =>
+    debugStart("Bitbuckets.handlePostHook")
     debug(Json.prettyPrint(request.body))
 
     request.body.validate[BitbucketPostHook].fold(
@@ -54,6 +55,7 @@ object Bitbuckets extends Controller with utils.Config with utils.Log {
       }
     )
 
+    debugEnd
     Ok
   }
 }

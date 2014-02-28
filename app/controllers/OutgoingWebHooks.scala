@@ -16,9 +16,9 @@ import models.JiraWebhookAction._
 import services._
 import models._
 
-object OutgoingWebHooks extends Controller {
+object OutgoingWebHooks extends Controller with utils.Log {
+  lazy val logger = Logger("hooks.outgoing")
 
-  def error(msg: String) = Ok("ERROR: " + msg)
   def asyncError(msg: String) = Future(Ok("ERROR: " + msg))
 
   val jiraRegex = "([a-zA-Z]+-[0-9]+)".r
@@ -57,14 +57,14 @@ object OutgoingWebHooks extends Controller {
       else { response = response + "\n" + message }
     }
 
-    Logger("hooks.outgoing").debug("--------------- Handling OutgoingWebHook ---------------");
+    debugStart("OutgoingWebHooks.handle");
     hookForm.bindFromRequest.fold(
       errors => {
-        Logger("hooks.outgoing").debug("ERROR parsing: " + request.body)
+        debug("ERROR parsing: " + request.body)
         Future(IncomingWebHook("Something went really wrong", Some("ERROR")).toResult)
       },
       hook => {
-        Logger("hooks.outgoing").debug(hook.toString)
+        debug(hook.toString)
         if (!hook.acceptable) { Future(Ok) }
         else {
           // Handle JIRA expressions
@@ -84,7 +84,7 @@ object OutgoingWebHooks extends Controller {
 
             if (hasJira) appendUsername("JIRA")
             if (username.isEmpty) appendUsername("ZenBot")
-            
+
             Ok(Json.stringify(Json.obj(
               "username" -> username,
               "text" -> response

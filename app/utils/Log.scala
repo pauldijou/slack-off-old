@@ -9,6 +9,8 @@ trait Log {
   def trace(errors: Seq[(JsPath, Seq[play.api.data.validation.ValidationError])]) =
     logger.trace(Json.prettyPrint(JsError.toFlatJson(errors)))
 
+  def debugStart(sectionName: String) = logger.debug(s"-------------------- ${sectionName} -----------------------")
+  def debugEnd = logger.debug(s"------------------------------------------------------")
   def debug(msg: String) = logger.debug(msg)
   def debug(errors: Seq[(JsPath, Seq[play.api.data.validation.ValidationError])]) =
     logger.debug(Json.prettyPrint(JsError.toFlatJson(errors)))
