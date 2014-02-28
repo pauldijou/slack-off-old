@@ -13,6 +13,7 @@ object Bitbuckets extends Controller with utils.Config with utils.Log {
 
   def handlePostHook = Action { implicit request =>
     debugStart("Bitbuckets.handlePostHook")
+    debug(request.body.toString)
     val body = request.body.asJson.getOrElse(JsUndefined("Request body is not valid JSON."))
     debug(Json.prettyPrint(body))
 
