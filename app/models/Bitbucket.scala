@@ -17,7 +17,8 @@ object BitbucketCommitFile {
 // COMMIT
 case class BitbucketCommit(
   author: String,
-  branch: String,
+  branch: Option[String],
+  branches: Option[List[String]],
   files: List[BitbucketCommitFile],
   message: String,
   node: String,
@@ -29,10 +30,11 @@ case class BitbucketCommit(
   timestamp: String,
   utctimestamp: String
 ) {
+  lazy val trueBranch = this.branch.getOrElse("unknow")
   def browseUrl(projectUrl: String) = s"${projectUrl}commits/${this.raw_node}"
   def browseAuthorUrl(canonUrl: String) = s"${canonUrl}/${this.author}"
-  def browseBranchUrl(projectUrl: String) = s"${projectUrl}branch/${this.branch}"
-  def browseBranchCommitsUrl(projectUrl: String) = s"${projectUrl}commits/branch/${this.branch}"
+  def browseBranchUrl(projectUrl: String) = s"${projectUrl}branch/${this.trueBranch}"
+  def browseBranchCommitsUrl(projectUrl: String) = s"${projectUrl}commits/branch/${this.trueBranch}"
 }
 object BitbucketCommit { implicit val bitbucketCommitFormat = Json.format[BitbucketCommit] }
 
