@@ -5,10 +5,8 @@
 # Home page
 GET     /debug                      controllers.Debug.display
 
-POST    /jira                       controllers.Jiras.handleWebhook
 POST    /command                    controllers.Commands.handle
-
-#POST    /hooks/jira                 controllers.Jiras.handleWebhook
+POST    /hooks/jira                 controllers.Jiras.handleWebhook
 POST    /hooks/outgoing             controllers.OutgoingWebHooks.handle
 
 # Map static resources from the /public folder to the /assets URL path
