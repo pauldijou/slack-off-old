@@ -11,11 +11,12 @@ import services._
 object Bitbuckets extends Controller with utils.Config with utils.Log {
   lazy val logger = Logger("hooks.bitbucket")
 
-  def handlePostHook = Action(parse.json) { implicit request =>
+  def handlePostHook = Action { implicit request =>
     debugStart("Bitbuckets.handlePostHook")
-    debug(Json.prettyPrint(request.body))
+    val body = request.body.asJson.getOrElse(JsUndefined("Request body is not valid JSON."))
+    debug(Json.prettyPrint(body))
 
-    request.body.validate[BitbucketPostHook].fold(
+    body.validate[BitbucketPostHook].fold(
       errors => debug(errors),
       hook => {
         debug(hook.toString)
