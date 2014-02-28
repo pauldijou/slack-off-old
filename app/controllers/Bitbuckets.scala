@@ -14,7 +14,21 @@ object Bitbuckets extends Controller with utils.Config with utils.Log {
   def handlePostHook = Action { implicit request =>
     debugStart("Bitbuckets.handlePostHook")
     debug(request.body.toString)
-    val body = request.body.asJson.getOrElse(JsUndefined("Request body is not valid JSON."))
+
+    val body: JsValue = request.body match {
+      case json: AnyContentAsJson => json.asJson.getOrElse(JsUndefined("Request body is not valid JSON."))
+      case form: AnyContentAsFormUrlEncoded => {
+        (for {
+          mapForm <- form.asFormUrlEncoded
+          payload <- mapForm.get("payload")
+          payloadContent <- payload.headOption
+        } yield {
+          Json.parse(payloadContent)
+        }) getOrElse(JsUndefined("Request body payload is not valid JSON."))
+      }
+      case _ => JsUndefined("Body type not supported")
+    }
+
     debug(Json.prettyPrint(body))
 
     body.validate[BitbucketPostHook].fold(
