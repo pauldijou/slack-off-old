@@ -1,0 +1,20 @@
+package controllers
+
+import play.api._
+import play.api.mvc._
+import play.api.libs.json._
+import play.api.libs.functional.syntax._
+
+
+object Debug extends Controller with utils.Config {
+
+  def display = Action {
+    val prints = Map(
+      "slack.team.name" -> slackTeam,
+      "jira.auth.basic" -> jiraAuthBasic
+    )
+
+    Ok(views.html.debug(prints))
+  }
+
+}

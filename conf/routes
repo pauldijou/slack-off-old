@@ -3,6 +3,8 @@
 # ~~~~
 
 # Home page
+GET     /debug                      controllers.Debug.display
+
 POST    /jira                       controllers.Jiras.handleWebhook
 POST    /command                    controllers.Commands.handle
 
