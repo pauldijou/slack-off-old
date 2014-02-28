@@ -55,7 +55,7 @@ object Bitbuckets extends Controller with utils.Config with utils.Log {
           val authorUrl = commit.browseAuthorUrl(hook.canon_url)
           val filesPlural = if (commit.files.size > 1) { "s" } else { "" }
           val filesMsg = s"${commit.files.size} file${filesPlural} impacted"
-          val msg = s"[<${commitUrl}|${commit.node}>] <${authorUrl}|${commit.author}> on <${branchUrl}|${commit.branch}>\n${filesMsg} at ${commit.timestamp}"
+          val msg = s"[<${commitUrl}|${commit.node}>] <${authorUrl}|${commit.author}> on <${branchUrl}|${commit.trueBranch}>\n${filesMsg} at ${commit.timestamp}"
           commitsBuffer += IncomingWebHookAttachment(
             msg + "\n" + commit.message, None, None, None,
             List(

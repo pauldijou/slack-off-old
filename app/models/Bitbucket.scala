@@ -30,7 +30,7 @@ case class BitbucketCommit(
   timestamp: String,
   utctimestamp: String
 ) {
-  lazy val trueBranch = this.branch.getOrElse("unknow")
+  lazy val trueBranch: String = this.branch.getOrElse("unknow")
   def browseUrl(projectUrl: String) = s"${projectUrl}commits/${this.raw_node}"
   def browseAuthorUrl(canonUrl: String) = s"${canonUrl}/${this.author}"
   def browseBranchUrl(projectUrl: String) = s"${projectUrl}branch/${this.trueBranch}"
