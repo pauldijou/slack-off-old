@@ -63,13 +63,16 @@ object OutgoingWebHooks extends Controller {
           // Handle JIRA expressions
           Future.sequence((for {
             jiraRegex(issueKey) <- jiraRegex findAllIn hook.text
-          } yield issueKey).toList map { key =>
-            JiraApi.get(key)
+          } yield issueKey).toList map {
+            key => JiraApi.get(key).map { (key, _) }
           }).map { issues =>
-            issues foreach { issue =>
-              hasJira = true
-              val link = JiraApi.issueUrl(issue.key)
-              appendResponse(s"<${link}|${issue.key}> [${issue.fields.priority.name}]: ${issue.fields.summary} (by ${issue.fields.creator.displayName})")
+            issues foreach {
+              case (key, None) => appendResponse(s"${key}: No issue found, sorry.")
+              case (key, Some(issue)) => {
+                hasJira = true
+                val link = JiraApi.issueUrl(issue.key)
+                appendResponse(s"<${link}|${issue.key}> [${issue.fields.priority.name}]: ${issue.fields.summary} (by ${issue.fields.creator.displayName})")
+              }
             }
 
             if (hasJira) appendUsername("JIRA")

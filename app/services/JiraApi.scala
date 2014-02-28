@@ -18,10 +18,10 @@ object JiraApi extends utils.Config {
 
   def issueUrl(key: String) = jiraUrl + "/browse/" + key
 
-  def get(key: String): Future[JiraIssue] =
+  def get(key: String): Future[Option[JiraIssue]] =
     WS.url(apiUrlIssues + "/" + key)
       .withHeaders("Authorization" -> ("Basic " + jiraAuthBasic))
-      .get.map(_.json.as[JiraIssue])
+      .get.map(_.json.asOpt[JiraIssue])
 
   def create(summary: String, description: String, project: String, issueType: String): Future[JsObject] = {
     val projectLabel = if (utils.Numbers.isAllDigits(project)) { "id" } else { "key" }
