@@ -10,17 +10,17 @@ import play.api.libs.ws.WS
 import models.JiraIssue
 
 object JiraApi extends utils.Config {
-  lazy val apiUrl = jiraUrl + "/rest/api/2"
+  lazy val apiUrl = jira.url + "/rest/api/2"
   lazy val apiUrlIssues = apiUrl + "/issue"
 
-  lazy val api = WS.url(jiraUrl + "/rest/api/2")//.withHeaders("Authorization" -> ("Basic " + jiraAuthBasic))
+  lazy val api = WS.url(jira.url + "/rest/api/2")//.withHeaders("Authorization" -> ("Basic " + jiraAuthBasic))
   lazy val apiIssues = WS.url(apiUrlIssues)//.withHeaders("Authorization" -> ("Basic " + jiraAuthBasic))
 
-  def issueUrl(key: String) = jiraUrl + "/browse/" + key
+  def issueUrl(key: String) = jira.url + "/browse/" + key
 
   def get(key: String): Future[Option[JiraIssue]] =
     WS.url(apiUrlIssues + "/" + key)
-      .withHeaders("Authorization" -> ("Basic " + jiraAuthBasic))
+      .withHeaders("Authorization" -> ("Basic " + jira.authBasic))
       .get.map(_.json.asOpt[JiraIssue])
 
   def create(summary: String, description: String, project: String, issueType: String): Future[JsObject] = {

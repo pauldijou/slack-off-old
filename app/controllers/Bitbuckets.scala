@@ -35,14 +35,37 @@ object Bitbuckets extends Controller with utils.Config with utils.Log {
       errors => debug(errors),
       hook => {
         debug(hook.toString)
-        val username = request.getQueryString("username") orElse Some("Bitbucket")
+        val username = request.getQueryString("username") orElse bitbucket.bot.name
         val channel = request.getQueryString("channel").map("#" + _)
-        val iconUrl = request.getQueryString("iconUrl") orElse
-          Some("https://slack.global.ssl.fastly.net/10800/img/services/bitbucket_32.png")
+        val iconUrl = request.getQueryString("iconUrl") orElse bitbucket.bot.icon
 
+        // Thanks to Altassian guys, if you push several commits at once in the same branch,
+        // only the last one will have a non-null branch property in the payload.
+        // We need to normalize that!
+        var branches = scala.collection.mutable.Map[String, String]()
+        val commits: List[BitbucketCommit] = (hook.commits.reverse.map { commit => commit.branch match {
+          // Yeah, we have a branch! Don't touch the commit
+          // but let's save its branch and also consider its parents might probably
+          // be on the same branch
+          case Some(b) => {
+            branches += (commit.node -> b)
+            commit.parents.foreach { parent => branches += (parent -> b) }
+            commit
+          }
+          // Ouch, no branch... that shouldn't be possible, right?
+          // Anyway, let's hope one of its children correctly put a branch in the map
+          case None => branches.get(commit.node) match {
+            // Woot, we find one! Same has before, get ready to propagate to parents if necessary
+            case Some(b) => {
+              commit.parents.foreach { parent => branches += (parent -> b) }
+              commit.copy(branch = Some(b))
+            }
+            // Let's hope we never reach here...
+            case None => commit
+          }
+        }}).reverse
 
         val projectUrl = s"${hook.canon_url}${hook.repository.absolute_url}"
-        val commits = hook.commits
         val commitsPlural = if (commits.size > 1) { "s" } else { "" }
         val totalFiles = commits.foldLeft(0) { (acc, c) => acc + c.files.size }
         val totalFilesPlural = if (totalFiles > 1) { "s" } else { "" }

@@ -10,18 +10,23 @@ import models.JiraWebhookAction._
 
 import services._
 
-object Jiras extends Controller with utils.Config {
-  
+object Jiras extends Controller with utils.Config with utils.Log {
+  lazy val logger = Logger("hooks.jira")
+
   def handleWebhook = Action(parse.json) { implicit request =>
-    println(Json.prettyPrint(request.body))
+
 
     request.body.validate[JiraWebhookEvent].fold(
-      errors => println(errors),
+      errors => {
+        debug(Json.prettyPrint(request.body))
+        debug(errors)
+      },
       event => {
+        debug(Json.prettyPrint(Json.toJson(event)))
         val action = event.webhookEvent
-        val username = request.getQueryString("username") orElse Some("JIRA")
+        val username = request.getQueryString("username") orElse jira.bot.name
         val channel = request.getQueryString("channel").map("#" + _)
-        val iconUrl = request.getQueryString("iconUrl") orElse Some("https://slack.global.ssl.fastly.net/14542/img/services/jira_32.png")
+        val iconUrl = request.getQueryString("iconUrl") orElse jira.bot.icon
 
         val issue = event.issue
         val fields = issue.fields
@@ -35,7 +40,11 @@ object Jiras extends Controller with utils.Config {
         var attachmentsBuffer = scala.collection.mutable.ListBuffer[IncomingWebHookAttachment]()
 
         val attachmentIssueSummary = IncomingWebHookAttachmentField("Summary", fields.summary)
-        val defaultColor = if (event.created) { Some("good") } else if (event.deleted) { Some("danger") } else None
+        val defaultColor =
+          if (event.created) { jira.colors.issue.created }
+          else if (event.deleted) { jira.colors.issue.deleted }
+          else jira.colors.issue.updated
+
         val defaultAttachment = IncomingWebHookAttachment(
           s"Created by ${fields.creator.displayName}. Summary: ${fields.summary}",
           None, None, defaultColor,
@@ -79,25 +88,22 @@ object Jiras extends Controller with utils.Config {
           val comment = event.comment.get
           var fieldName = "Content"
 
-          if (message.length > 1) {
-            if (event.newlyCommented) {
-              fieldName = s"Also added a comment:"
-            } else {
-              fieldName = s"Also edited a comment:"
-            }
-          } else {
-            if (event.newlyCommented) {
+          (message.length > 1, event.newlyCommented) match {
+            case (true, true) => { fieldName = s"Also added a comment:" }
+            case (true, false) => { fieldName = s"Also edited a comment:" }
+            case (false, true) => {
               message = s"${updatedBy} added a comment to ${issueType} <${issueLink}|${issueName}> (${fields.summary})."
-            } else {
+            }
+            case (false, false) => {
               message = s"${updatedBy} edited a comment to ${issueType} <${issueLink}|${issueName}> (${fields.summary})."
             }
           }
 
           attachmentsBuffer += IncomingWebHookAttachment(
-            s"${fieldName}: ${comment.body}", None, None, Some("warning"),
+            s"${fieldName}: ${comment.body}", None, None, jira.colors.comment,
             List(IncomingWebHookAttachmentField(fieldName, comment.body))
           )
-        } 
+        }
 
         val attachments = attachmentsBuffer.result
         val attachmentsOpt = if (attachments.isEmpty) { None } else { Some(attachments) }
@@ -108,5 +114,4 @@ object Jiras extends Controller with utils.Config {
 
     Ok
   }
-  
 }

@@ -31,6 +31,7 @@ case class BitbucketCommit(
   utctimestamp: String
 ) {
   lazy val trueBranch: String = this.branch.getOrElse("unknow")
+  def isMerge = this.branches.map(_.size > 1).getOrElse(false)
   def browseUrl(projectUrl: String) = s"${projectUrl}commits/${this.raw_node}"
   def browseAuthorUrl(canonUrl: String) = s"${canonUrl}/${this.author}"
   def browseBranchUrl(projectUrl: String) = s"${projectUrl}branch/${this.trueBranch}"

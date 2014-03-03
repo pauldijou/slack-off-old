@@ -16,8 +16,8 @@ import models.JiraWebhookAction._
 import services._
 import models._
 
-object OutgoingWebHooks extends Controller with utils.Log {
-  lazy val logger = Logger("hooks.outgoing")
+object Messages extends Controller with utils.Config with utils.Log {
+  lazy val logger = Logger("hooks.messages")
 
   def asyncError(msg: String) = Future(Ok("ERROR: " + msg))
 
@@ -37,10 +37,6 @@ object OutgoingWebHooks extends Controller with utils.Log {
       "service_id" -> optional(text)
     )(OutgoingWebHook.apply)(OutgoingWebHook.unapply)
   )
-
-  def get = Action {
-    Ok("You get it")
-  }
 
   def handle = Action.async { implicit request =>
     var username = ""
@@ -67,22 +63,18 @@ object OutgoingWebHooks extends Controller with utils.Log {
         debug(hook.toString)
         if (!hook.acceptable) { Future(Ok) }
         else {
-          // Handle JIRA expressions
-          Future.sequence((for {
-            jiraRegex(issueKey) <- jiraRegex findAllIn hook.content
-          } yield issueKey).toList map {
-            key => JiraApi.get(key).map { (key, _) }
-          }).map { issues =>
-            issues foreach {
-              case (key, None) => appendResponse(s"${key}: No issue found, sorry.")
-              case (key, Some(issue)) => {
-                hasJira = true
-                val link = JiraApi.issueUrl(issue.key)
-                appendResponse(s"<${link}|${issue.key}> [${issue.fields.priority.name}]: ${issue.fields.summary} (by ${issue.fields.creator.displayName})")
+          var handlersBuffer = scala.collection.mutable.ListBuffer[Future[(String, String)]]()
+
+          if (messages.jira.enabled) { handlersBuffer += handleJira(hook) }
+
+          Future.sequence(handlersBuffer.result).map { responses =>
+            responses.foreach { response =>
+              if (!response._2.isEmpty) {
+                appendUsername(response._1)
+                appendResponse(response._2)
               }
             }
-
-            if (hasJira) appendUsername("JIRA")
+          }.map { _ =>
             if (username.isEmpty) appendUsername("ZenBot")
 
             Ok(Json.stringify(Json.obj(
@@ -93,5 +85,22 @@ object OutgoingWebHooks extends Controller with utils.Log {
         }
       }
     )
+  }
+
+  def handleJira(hook: OutgoingWebHook): Future[(String, String)] = {
+    Future.sequence((for {
+      jiraRegex(issueKey) <- jiraRegex findAllIn hook.content
+    } yield issueKey).toList map {
+      key => JiraApi.get(key).map { (key, _) }
+    }).map { issues =>
+      ("JIRA",
+      issues.map {
+        case (key, None) => s"${key}: No issue found, sorry."
+        case (key, Some(issue)) => {
+          val link = JiraApi.issueUrl(issue.key)
+          s"<${link}|${issue.key}> [${issue.fields.priority.name}]: ${issue.fields.summary} (by ${issue.fields.creator.displayName})"
+        }
+      }.mkString("\n"))
+    }
   }
 }

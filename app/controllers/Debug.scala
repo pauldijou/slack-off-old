@@ -10,7 +10,7 @@ object Debug extends Controller with utils.Config {
 
   def display = Action {
     val prints = Map(
-      "slack.team.name" -> slackTeam
+      "slack.team.name" -> slack.team.name
     )
 
     Ok(views.html.debug(prints))
