@@ -73,12 +73,13 @@ object Bitbuckets extends Controller with utils.Config with utils.Log {
         var commitsBuffer = scala.collection.mutable.ListBuffer[IncomingWebHookAttachment]()
 
         commits foreach { commit =>
-          val commitUrl = commit.browseUrl(projectUrl)
-          val branchUrl = commit.browseBranchCommitsUrl(projectUrl)
-          val authorUrl = commit.browseAuthorUrl(hook.canon_url)
           val filesPlural = if (commit.files.size > 1) { "s" } else { "" }
           val filesMsg = s"${commit.files.size} file${filesPlural} impacted"
-          val msg = s"[<${commitUrl}|${commit.node}>] <${authorUrl}|${commit.author}> on <${branchUrl}|${commit.trueBranch}>\n${filesMsg} at ${commit.timestamp}"
+          val commitLink = s"<${commit.browseUrl(projectUrl)}|${commit.node}>"
+          val authorLink = s"<${commit.browseAuthorUrl(hook.canon_url)}|${commit.author}>"
+          val branchLink = commit.branch.map(b => s"<${commit.browseBranchCommitsUrl(projectUrl)}|${b}>").getOrElse("no branch")
+
+          val msg = s"${authorLink} [${branchLink} / ${commitLink}]\n${filesMsg} at ${commit.timestamp}"
           commitsBuffer += IncomingWebHookAttachment(
             msg + "\n" + commit.message, None, None, None,
             List(

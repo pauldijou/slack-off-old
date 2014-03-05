@@ -52,35 +52,43 @@ object Jiras extends Controller with utils.Config with utils.Log {
         )
 
         if (event.created) {
-          message = s"${issueType} <${issueLink}|${issueName}> has been created by ${updatedBy}."
+          message = s"[${fields.priority.name}] ${issueType} <${issueLink}|${issueName}> has been created by ${updatedBy}."
           val improvedFields =
-            IncomingWebHookAttachmentField("Priority", fields.priority.name) +:
             defaultAttachment.fields :+
-            IncomingWebHookAttachmentField("Description", fields.description.getOrElse(""))
+            IncomingWebHookAttachmentField("Description", fields.description.getOrElse("(None)"))
 
           attachmentsBuffer += defaultAttachment.copy(fields = improvedFields)
         } else if (event.deleted) {
-          message = s"${issueType} <${issueLink}|${issueName}> has been deleted by ${updatedBy}."
+          message = s"[${fields.priority.name}] ${issueType} <${issueLink}|${issueName}> has been deleted by ${updatedBy}."
           attachmentsBuffer += defaultAttachment
         } else if (event.worklogUpdated) {
           message = s"Worklog of <${issueLink}|${issueName}> has been updated by ${updatedBy}."
           attachmentsBuffer += defaultAttachment
         } else if (event.changedlog) {
           val changelog = event.changelog.get
-          message = s"${issueType} <${issueLink}|${issueName}> has been updated by ${updatedBy} (${fields.summary})."
+          message = s"[${fields.priority.name}] ${issueType} <${issueLink}|${issueName}> has been updated by ${updatedBy} (${fields.summary})."
 
           changelog.items.foreach { item =>
-            val from = item.fromStr.getOrElse("")
-            val to = item.toStr.getOrElse("")
 
-            attachmentsBuffer += IncomingWebHookAttachment(
-              s"${item.field}: ${from} -> ${to}", None, None, None,
-              List(
-                IncomingWebHookAttachmentField("Field", item.field),
-                IncomingWebHookAttachmentField("From", from, true),
-                IncomingWebHookAttachmentField("To", to, true)
+            val from = item.fromStr.getOrElse("(None)")
+            val to = item.toStr.getOrElse("(None)")
+
+            if (from.length > 25 || to.length > 25) {
+              attachmentsBuffer += IncomingWebHookAttachment(
+                s"[${item.field}] ${from} -> ${to}", None, None, None,
+                List(
+                  IncomingWebHookAttachmentField("Field", item.field),
+                  IncomingWebHookAttachmentField("From", from),
+                  IncomingWebHookAttachmentField("To", to)
+                )
               )
-            )
+            } else {
+              attachmentsBuffer += IncomingWebHookAttachment(
+                s"[${item.field}] ${from} -> ${to}",
+                Some(s"[${item.field}] ${from} -> ${to}"),
+                None, None, List()
+              )
+            }
           }
         }
 
