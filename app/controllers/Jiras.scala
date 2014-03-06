@@ -55,7 +55,7 @@ object Jiras extends Controller with utils.Config with utils.Log {
           message = s"[${fields.priority.name}] ${issueType} <${issueLink}|${issueName}> has been created by ${updatedBy}."
           val improvedFields =
             defaultAttachment.fields :+
-            IncomingWebHookAttachmentField("Description", fields.description.getOrElse("(None)"))
+            IncomingWebHookAttachmentField("Description", fields.description.filterNot(_.isEmpty).getOrElse("(None)"))
 
           attachmentsBuffer += defaultAttachment.copy(fields = improvedFields)
         } else if (event.deleted) {
@@ -70,8 +70,8 @@ object Jiras extends Controller with utils.Config with utils.Log {
 
           changelog.items.foreach { item =>
 
-            val from = item.fromStr.getOrElse("(None)")
-            val to = item.toStr.getOrElse("(None)")
+            val from = item.fromStr.filterNot(_.isEmpty).getOrElse("(None)")
+            val to = item.toStr.filterNot(_.isEmpty).getOrElse("(None)")
 
             if (from.length > 25 || to.length > 25) {
               attachmentsBuffer += IncomingWebHookAttachment(
