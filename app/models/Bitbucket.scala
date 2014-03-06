@@ -32,7 +32,7 @@ case class BitbucketCommit(
 ) {
   def isMerge = this.branches.map(_.size > 1).getOrElse(false)
   def browseUrl(projectUrl: String) = s"${projectUrl}commits/${this.raw_node}"
-  def browseAuthorUrl(canonUrl: String) = s"${canonUrl}/${this.raw_author}"
+  def browseAuthorUrl(canonUrl: String) = s"${canonUrl}/${this.author}"
   def browseBranchUrl(projectUrl: String) = this.branch.map(b => s"${projectUrl}branch/${b}").getOrElse("")
   def browseBranchCommitsUrl(projectUrl: String) = this.branch.map(b => s"${projectUrl}commits/branch/${b}").getOrElse("")
 }
