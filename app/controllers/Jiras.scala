@@ -61,33 +61,36 @@ object Jiras extends Controller with utils.Config with utils.Log {
         } else if (event.deleted) {
           message = s"[${fields.priority.name}] ${issueType} <${issueLink}|${issueName}> has been deleted by ${updatedBy}."
           attachmentsBuffer += defaultAttachment
-        } else if (event.worklogUpdated) {
+        } else if (event.worklogUpdated && jira.worklog.enabled) {
           message = s"Worklog of <${issueLink}|${issueName}> has been updated by ${updatedBy}."
           attachmentsBuffer += defaultAttachment
         } else if (event.changedlog) {
           val changelog = event.changelog.get
-          message = s"[${fields.priority.name}] ${issueType} <${issueLink}|${issueName}> has been updated by ${updatedBy} (${fields.summary})."
+          val validItems = changelog.items.filterNot { item =>
+            jira.blackList.exists(e => e.toLowerCase == item.field.toLowerCase)
+          }
+          
+          if (!validItems.isEmpty) {
+            message = s"[${fields.priority.name}] ${issueType} <${issueLink}|${issueName}> has been updated by ${updatedBy} (${fields.summary})."
+            validItems.foreach { item =>
+              val from = item.fromStr.filterNot(_.isEmpty)
+              val to = item.toStr.filterNot(_.isEmpty).getOrElse("(None)")
+              val attachMsg = s"""[${item.field}] ${to} ${from.map("(was " + _ + ")").getOrElse("")}"""
 
-          changelog.items.foreach { item =>
-
-            val from = item.fromStr.filterNot(_.isEmpty).getOrElse("(None)")
-            val to = item.toStr.filterNot(_.isEmpty).getOrElse("(None)")
-
-            if (from.length > 25 || to.length > 25) {
-              attachmentsBuffer += IncomingWebHookAttachment(
-                s"[${item.field}] ${from} -> ${to}", None, None, None,
-                List(
-                  IncomingWebHookAttachmentField("Field", item.field),
-                  IncomingWebHookAttachmentField("From", from),
-                  IncomingWebHookAttachmentField("To", to)
+              if (from.map(_.length > 25).getOrElse(false) || to.length > 25) {
+                attachmentsBuffer += IncomingWebHookAttachment(
+                  attachMsg, None, None, None,
+                  List(
+                    IncomingWebHookAttachmentField("Field", item.field),
+                    IncomingWebHookAttachmentField("To", to),
+                    IncomingWebHookAttachmentField("From", from.getOrElse("(None)"))
+                  )
                 )
-              )
-            } else {
-              attachmentsBuffer += IncomingWebHookAttachment(
-                s"[${item.field}] ${from} -> ${to}",
-                Some(s"[${item.field}] ${from} -> ${to}"),
-                None, None, List()
-              )
+              } else {
+                attachmentsBuffer += IncomingWebHookAttachment(
+                  attachMsg, Some(attachMsg), None, None, List()
+                )
+              }
             }
           }
         }

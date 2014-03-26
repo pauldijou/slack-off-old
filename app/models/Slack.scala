@@ -53,7 +53,8 @@ case class OutgoingWebHook(
   user_id: String,
   user_name: String,
   text: Option[String],
-  service_id: Option[String]
+  service_id: Option[String],
+  trigger_word: Option[String]
 ) {
   lazy val content = this.text.getOrElse("")
   lazy val acceptable = (this.user_id != "USLACKBOT") && this.text.isDefined

@@ -34,7 +34,8 @@ object Messages extends Controller with utils.Config with utils.Log {
       "user_id" -> nonEmptyText,
       "user_name" -> nonEmptyText,
       "text" -> optional(text),
-      "service_id" -> optional(text)
+      "service_id" -> optional(text),
+      "trigger_word" -> optional(text)
     )(OutgoingWebHook.apply)(OutgoingWebHook.unapply)
   )
 

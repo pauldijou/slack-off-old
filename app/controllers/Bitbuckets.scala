@@ -80,13 +80,8 @@ object Bitbuckets extends Controller with utils.Config with utils.Log {
           val authorLink = s"<${commit.browseAuthorUrl(hook.canon_url)}|${authorName}>"
           val branchLink = commit.branch.map(b => s"<${commit.browseBranchCommitsUrl(projectUrl)}|${b}>").getOrElse("no branch")
 
-          val msg = s"${authorLink} [${branchLink} / ${commitLink}]\n${filesMsg} at ${commit.timestamp}"
-          commitsBuffer += IncomingWebHookAttachment(
-            msg + "\n" + commit.message, None, None, None,
-            List(
-              IncomingWebHookAttachmentField(commit.message, msg)
-            )
-          )
+          val msg = s"[${branchLink} / ${commitLink}] ${authorLink}: ${commit.message}"
+          commitsBuffer += IncomingWebHookAttachment(msg, Some(msg), None, None, List())
         }
 
         val attachments = commitsBuffer.result

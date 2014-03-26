@@ -1,15 +1,18 @@
 package utils
 
+import scala.collection.JavaConverters._
 import play.api.Play
 
 trait Config {
   def config = Config.config
   def getString(key: String) = Config.getString(key)
+  def getStringSeq(key: String) = Config.getStringSeq(key)
 
   // JIRA
   object jira {
     def url = getString("jira.url")
     def authBasic = getString("jira.auth.basic")
+    def blackList = getStringSeq("jira.blacklist")
 
     object bot {
       def name = config.getString("jira.bot.name")
@@ -24,6 +27,10 @@ trait Config {
       }
 
       def comment =  config.getString("jira.colors.comment")
+    }
+
+    object worklog {
+      def enabled = config.getBoolean("jira.worklog.enabled") getOrElse true
     }
   }
 
@@ -58,6 +65,9 @@ trait Config {
 }
 
 object Config {
+  def asScalaList[A](l: java.util.List[A]): Seq[A] = asScalaBufferConverter(l).asScala.toList
+  
   lazy val config = Play.current.configuration
   def getString(key: String): String = config.getString(key) getOrElse ""
+  def getStringSeq(key: String): Seq[String] = config.getStringList(key).map(asScalaList) getOrElse Seq.empty
 }
